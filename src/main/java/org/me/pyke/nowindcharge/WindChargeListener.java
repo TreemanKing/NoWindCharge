@@ -49,8 +49,10 @@ public class WindChargeListener implements Listener {
 
         if (isInExcludedRegion(player)) {
             event.setCancelled(true);
-            String message = plugin.getConfig().getString("deny-message", "&cYou cannot use this item in region &e%region%&c!");
-            player.sendMessage(plugin.formatMessage(message.replace("%region%", getRegionName(player))));
+            if (plugin.getConfig().getBoolean("send-error-message", true)) {
+                String message = plugin.getConfig().getString("deny-message", "&cYou cannot use this item in region &e%region%&c!");
+                player.sendMessage(plugin.formatMessage(message.replace("%region%", getRegionName(player))));
+            }
         }
     }
 
@@ -74,6 +76,12 @@ public class WindChargeListener implements Listener {
 
     private boolean isInExcludedRegion(Player player) {
         List<String> excludedRegions = plugin.getConfig().getStringList("excluded-regions");
+        List<String> excludedWorlds = plugin.getConfig().getStringList("excluded-worlds");
+
+        // Check if the player's world is in the excluded worlds list
+        if (excludedWorlds.contains(player.getWorld().getName())) {
+            return true;
+        }
 
         RegionManager regionManager = com.sk89q.worldguard.WorldGuard.getInstance()
                 .getPlatform()
