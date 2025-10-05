@@ -9,7 +9,7 @@ excluded-worlds: [] # Add world names here to disable Wind Charge in those world
 completely-disabled-message: "&cWIND_CHARGE usage is completely disabled!"
 
 send-error-message: true # If false, deny-message will not be sent to the player
-deny-message: "&cYou cannot use this item in region &e%region%&c!"
+deny-message: "&cYou cannot use this item in area &e%area%&c!"
 
 reload-message: "&aConfiguration reloaded!"
 no-permission-message: "&cYou don't have permission to use this command!"

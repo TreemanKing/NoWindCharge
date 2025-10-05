@@ -24,6 +24,47 @@ public class WindChargeListener implements Listener {
         this.plugin = plugin;
     }
 
+    private enum ExclusionType {
+        WORLD, REGION, NONE
+    }
+
+    private ExclusionType getExclusionType(Player player) {
+        List<String> excludedRegions = plugin.getConfig().getStringList("excluded-regions");
+        List<String> excludedWorlds = plugin.getConfig().getStringList("excluded-worlds");
+        if (excludedWorlds.contains(player.getWorld().getName())) {
+            return ExclusionType.WORLD;
+        }
+        RegionManager regionManager = com.sk89q.worldguard.WorldGuard.getInstance()
+                .getPlatform()
+                .getRegionContainer()
+                .get(BukkitAdapter.adapt(player.getWorld()));
+        if (regionManager == null) return ExclusionType.NONE;
+        ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
+        for (ProtectedRegion region : regions) {
+            if (excludedRegions.contains(region.getId())) {
+                return ExclusionType.REGION;
+            }
+        }
+        return ExclusionType.NONE;
+    }
+
+    private String getAreaName(Player player, ExclusionType type) {
+        if (type == ExclusionType.WORLD) {
+            return player.getWorld().getName();
+        } else if (type == ExclusionType.REGION) {
+            RegionManager regionManager = com.sk89q.worldguard.WorldGuard.getInstance()
+                    .getPlatform()
+                    .getRegionContainer()
+                    .get(BukkitAdapter.adapt(player.getWorld()));
+            if (regionManager == null) return "unknown";
+            ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
+            for (ProtectedRegion region : regions) {
+                return region.getId();
+            }
+        }
+        return "unknown";
+    }
+
     @EventHandler
     public void onPlayerUseWindCharge(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -47,11 +88,12 @@ public class WindChargeListener implements Listener {
             return;
         }
 
-        if (isInExcludedRegion(player)) {
+        ExclusionType exclusionType = getExclusionType(player);
+        if (exclusionType != ExclusionType.NONE) {
             event.setCancelled(true);
             if (plugin.getConfig().getBoolean("send-error-message", true)) {
-                String message = plugin.getConfig().getString("deny-message", "&cYou cannot use this item in region &e%region%&c!");
-                player.sendMessage(plugin.formatMessage(message.replace("%region%", getRegionName(player))));
+                String message = plugin.getConfig().getString("deny-message", "&cYou cannot use this item in area &e%area%&c!");
+                player.sendMessage(plugin.formatMessage(message.replace("%area%", getAreaName(player, exclusionType))));
             }
         }
     }
@@ -75,46 +117,6 @@ public class WindChargeListener implements Listener {
     }
 
     private boolean isInExcludedRegion(Player player) {
-        List<String> excludedRegions = plugin.getConfig().getStringList("excluded-regions");
-        List<String> excludedWorlds = plugin.getConfig().getStringList("excluded-worlds");
-
-        // Check if the player's world is in the excluded worlds list
-        if (excludedWorlds.contains(player.getWorld().getName())) {
-            return true;
-        }
-
-        RegionManager regionManager = com.sk89q.worldguard.WorldGuard.getInstance()
-                .getPlatform()
-                .getRegionContainer()
-                .get(BukkitAdapter.adapt(player.getWorld()));
-
-        if (regionManager == null) return false;
-
-        ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
-
-        for (ProtectedRegion region : regions) {
-            if (excludedRegions.contains(region.getId())) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private String getRegionName(Player player) {
-        RegionManager regionManager = com.sk89q.worldguard.WorldGuard.getInstance()
-                .getPlatform()
-                .getRegionContainer()
-                .get(BukkitAdapter.adapt(player.getWorld()));
-
-        if (regionManager == null) return "unknown";
-
-        ApplicableRegionSet regions = regionManager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
-
-        for (ProtectedRegion region : regions) {
-            return region.getId();
-        }
-
-        return "unknown";
+        return getExclusionType(player) != ExclusionType.NONE;
     }
 }
